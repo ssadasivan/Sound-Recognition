@@ -1,5 +1,7 @@
 
-
+library(tuneR)
+library(seewave)
+library(soundgen)
 #Extracting first set of features from soundgen:analyze
 
 an<-function (x)
@@ -95,7 +97,7 @@ flist1 <- data.frame(
 )
 
 
-a<-Sys.time()
+
 
 for (i in 1:3500)
 {
@@ -113,7 +115,7 @@ saveRDS(flist1,"flist1.rda")
 flist1 <- readRDS(file="flist1.rda")
 
 
-#====================== extracting the scond set of features from TUNE R package
+#====================== extracting the second set of features from TUNE R package
 
 flist2 <- data.frame(
   fold    = character(),
@@ -124,7 +126,7 @@ flist2 <- data.frame(
   stringsAsFactors=FALSE
 )
 
-for (i in 1:2)
+for (i in 1:3500)
 {
   fln <- list.files(paste(fnd[i],"/wav",sep=""))
   fl<-length(fln)
@@ -165,3 +167,6 @@ for (i in 1:2)
 remove(sndObj)
 }
 }
+saveRDS(flist2,"flist2.rda")
+setwd("/Users/ssadasivan/Documents/Reme/Sandvik/")
+flist2 <- readRDS(file="flist2.rda")
