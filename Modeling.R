@@ -37,7 +37,7 @@ dev.off()
 testing$rf3pred<-predict(rf3,testing)
 
 
-confusionMatrix(testing$rf3pred, testing$Gender)
+confusionMatrix(testing$Gender,testing$rf3pred)
 plot(rf3) #plots the error rate with the number of trees
 # can be used to fix the number of trees while we tune other paramters
 
@@ -65,15 +65,14 @@ library(nnet)
 
 
 
-mgrd1 = subset(mgrd, select = c(Gender) )
-mgrdi = subset(mgrd, select = -c(HNR_mean,	ampl_mean,	ampl_median,	ampl_sd,	amplVoiced_mean,	dom_mean,	
-                                   entropy_mean,	entropy_median,	entropy_sd,	f1_freq_mean,	f1_freq_median,	
-                                   f1_width_mean,	f1_width_median,	f2_freq_mean,	f2_freq_median,	f2_width_mean,
-                                   f2_width_median,	f3_freq_mean,	f3_width_mean,	medianFreq_mean,
-                                   peakFreq_mean,	peakFreqCut_mean,	pitch_mean,	pitchAutocor_mean,	pitchSpec_mean,
-                                   quartile25_mean,	quartile50_mean,	quartile75_mean,	specCentroid_mean,pitch_median,
-                                   specCentroid_median,	specCentroidCut_mean,	specCentroidCut_median,	specSlope_mean,
-                                   specSlope_median,Gender,duration,fold,sound) )
+mgrd1 = subset(fulldata, select = c(Gender) )
+mgrdi = subset(fulldata, select = c( pitchAutocor_median, pitchSpec_median ,   f3_freq_median , HNR_median ,        
+                                quartile75_median,   harmonics_median ,   dom_median   ,pitchSpec_sd    ,   
+                                specSlope_sd ,       voiced   ,f3_freq_sd    ,     
+                                quartile50_median,   f1_freq_sd  ,dom_sd, harmonics_sd  ,     
+                                peakFreqCut_median) )
+
+
 max = apply(mgrdi , 2 , max)
 min = apply(mgrdi, 2 , min)
 scaled = as.data.frame(scale(mgrdi, center = min, scale = max - min))
@@ -89,7 +88,7 @@ set.seed(2)
 n <- names(mgrdi)
 f <- as.formula(paste("Gender ~", paste(n[!n %in% "trainingn"], collapse = " + ")))
 #nn<-neuralnet(f,data=trainingn,hidden=1,linear.output=FALSE,threshold=0.01)
-nn<-nnet(f,data=trainingn,size=2)
+nn<-nnet(f,data=trainingn,size=11)
 # parameters to be tuned 
 #no of hidden layers
 # no of units in hidden layers
@@ -103,36 +102,43 @@ confusionMatrix(testingn$Gender,testingn$pred)
 #===================GBM Model
 
 library(gbm)
-#rexp<-subset(rexp,select=-c(X))
-#testing$responder_v<-as.numeric(testing$responder_v)
-#training$responder_v<-as.numeric(training$responder_v)
+
 t4<-t3
-t4$G1<-as.numeric(ifelse(t4$Gender=="Male", 1, 0))
+t4$G1<-as.numeric(ifelse(t4$Gender=="Female", "1", "0"))
 t4<-subset(t4,select=-c(Gender))
 
-# n.trees = seq(from=50 ,to=100, by=10) #no of trees-a vector of 100 values 
+n.trees = seq(from=50 ,to=100, by=10) #no of trees-a vector of 100 values 
 # id = seq(from=2 ,to=7, by=1) #no of vars to be considered for a split
 # oin = seq(from=50 ,to=100, by=10) #no of vars to be considered for a split
 # sh = seq(from=0.01 ,to=1, by=0.1)
-# 
-# obj <- tune(gbm, G1 ~ ., data = t4, distribution = "bernoulli",
-#             ranges = list(ntree=n.trees, shrinkage = sh, interaction.depth = id ,n.minobsinnode = oin ),
-#             tunecontrol = tune.control(sampling = "boot")
-# )
 
-summary(obj)
+t4$G1<-as.factor(t4$G1)
+
 count(t4$G1)
 
-fboost=gbm(G1 ~ . ,data = t4 ,distribution = "bernoulli",n.trees = 1000,
-           shrinkage = 0.01, interaction.depth = 2)
-# distrbution is for type of response  variable its gaussian for continous and 
+fboost=gbm(G1 ~ . ,data = t4 ,distribution = "bernoulli",n.trees = 100,
+           shrinkage = 0.5, interaction.depth = 5)
+# distrbution is for type of response  variable its gaussian for continous 
 # bernoulli for binaryy response
 #Summary gives a table of Variable Importance and a plot of Variable Importance
 summary(fboost) 
 
-n.trees = seq(from=100 ,to=1000, by=100) #no of trees-a vector of 100 values 
 
-#Generating a Prediction matrix for each Tree
-testing$predgbm<-predict(fboost,newdata=testing,n.trees=1000,type="response")
-testing$predgbmc <- as.factor(ifelse(testing$predgbm> 0.5, "Male", "Female"))
-confusionMatrix(testing$predgbmc,testing$Gender)
+predmatrix<-predict(fboost,newdata=testing,n.trees = n.trees,type="response")
+pred<-"pred"
+
+pr<-paste(pred,n.trees,sep="_")
+
+testing$pred_50 <- predmatrix[,1]
+testing$pred_100 <- predmatrix[,6]
+testing$p50c <- ifelse(testing$pred_50>0.5,"Female","Male")
+testing$p50c<- as.factor(testing$p50c)
+
+testing$pred_90 <- predmatrix[,5]
+testing$p90c <- ifelse(testing$pred_90>0.5,"Female","Male")
+testing$p90c<- as.factor(testing$p90c)
+
+testing$Gender<- as.factor(testing$Gender)
+
+confusionMatrix(testing$Gender,testing$p90c)
+confusionMatrix(testing$Gender,testing$p100c)
