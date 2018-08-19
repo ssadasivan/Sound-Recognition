@@ -1,8 +1,9 @@
 
 library(sqldf)
 library(psych)
-library(plyr)
+library(dplyr)
 library(caret)
+library(eply)
 
 # Joining all the features created into a single table along with the target variable :Gender
 fulldata<-sqldf("select a.* , b.Gender, c.skewf,c.kurtf,c.sdf from flist1 a inner join fldata b 
@@ -64,23 +65,33 @@ for(i in 2:75){
 summary(fulldata)
 
 #=====================================================
-# create plots for all variables and saving to PDF
+# create plots for all independenet variables and saving to PDF
+# Ranks each independent variable into a decile and calculates %of males in each decile
+# Plots decile avg (X-Axis) V/s % males (Y-axis)
 #=====================================================
 fulldatac<-fulldata
 
-fulldatac$r1<-ntile(fulldata$HNR_mean,10)
-HNR_mean<-sqldf("select r1 ,sum (case when Gender = 'Male' then 1 end) as 'Male',
-                            sum (case when Gender = 'Female' then 1 end) as  'Female',
-                            avg(HNR_mean) as avg_hnr_mean
 
-                  from fulldatac group by r1")
-HNR_mean$total <- HNR_mean$Male + HNR_mean$Female
-HNR_mean$Male_Per <- HNR_mean$Male / HNR_mean$total 
+n1 <- names(t3)
+n1<-n1[-11]
+t5<-subset(t3,select=-c(Gender))
 
+library(gsubfn)
 
 pdf("rplot.pdf") 
-plot(HNR_mean$avg_hnr_mean, HNR_mean$Male_Per, main="HNR_mean", xlab=" Decile Avg ", 
-     ylab="% Of Males", pch=19)
+for (i in 1:16)
+{
+  var<-n1[i]
+  vart<-n1
+  training$r2<-ntile(t5[i],10)
+  
+  vart <-sqldf(sprintf("select r2, sum (case when Gender = 'Male' then 1 end) as 'Male',
+                             sum (case when Gender = 'Female' then 1 end) as  'Female',
+                       avg(%s)  avg_hnr_mean from training group by r2",var)) 
+  vart$total <- vart$Male + vart$Female
+  vart$Male_Per <- vart$Male / vart$total 
+  plot(vart$avg_hnr_mean, vart$Male_Per, main=var, xlab=" Decile Avg ", 
+       ylab="% Of Males", pch=19)
+}
 dev.off()
-
 
