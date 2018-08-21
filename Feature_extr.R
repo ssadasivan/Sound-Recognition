@@ -170,3 +170,33 @@ remove(sndObj)
 saveRDS(flist2,"flist2.rda")
 setwd("/Users/ssadasivan/Documents/Reme/Sandvik/")
 flist2 <- readRDS(file="flist2.rda")
+
+#========================Parallelized version=================
+
+flistp<-flist1
+library(parallel)
+library(foreach)
+detectCores()
+
+library(doSNOW)
+
+c1 <- makeCluster(6, type="SOCK")
+
+registerDoSNOW(c1)
+
+n1<-Sys.time()
+output<-foreach (i = 1:3500 , .combine = "rbind", .packages = c("soundgen", "seewave")) %dopar%
+{
+  fname<-substr(fnd[i],start=50,stop=100)
+  d <- an(paste(fnd[i],"/wav",sep=""))
+  d$fold <- fname
+  flistp<-rbind(flistp,d)
+}
+stopCluster(c1)
+registerDoSEQ()
+print(n1)
+Sys.time()
+
+
+
+
